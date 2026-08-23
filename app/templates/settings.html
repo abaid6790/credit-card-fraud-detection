@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Settings - FraudGuard{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+
+<div class="card">
+  <p class="section-title">Privacy</p>
+  <p class="muted">Clear all locally stored prediction history. This cannot be undone.</p>
+  <button class="btn btn-danger" id="clearBtn">Clear Prediction History</button>
+  <p id="clearMsg" class="muted mt-2"></p>
+</div>
+
+<div class="card">
+  <p class="section-title">About Alerts</p>
+  <p class="muted">High and Critical risk predictions currently trigger in-app alerts on the
+     Monitoring page. Email, SMS, Telegram, and webhook integrations can be added later
+     without changing the core architecture.</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('clearBtn')?.addEventListener('click', async () => {
+  if (!confirm('This will permanently delete all logged prediction history. Continue?')) return;
+  try {
+    await postJSON('/api/transactions/clear', {});
+    document.getElementById('clearMsg').textContent = 'Prediction history cleared.';
+  } catch (e) {
+    document.getElementById('clearMsg').textContent = 'Failed to clear history.';
+  }
+});
+</script>
+{% endblock %}

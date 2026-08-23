@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
+data/*.csv
+instance/*.db
+models/*.pkl
+models/*.json
+uploads/*
+!uploads/.gitkeep
+exports/*
+!exports/.gitkeep
+screenshots/*.png
+.DS_Store
+*.log

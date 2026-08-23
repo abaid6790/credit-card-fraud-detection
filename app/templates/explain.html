@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Explainable AI - FraudGuard{% endblock %}
+{% block page_title %}Explainable AI{% endblock %}
+{% block content %}
+
+{% if not ready %}
+<div class="card error-state">Model not trained yet. Run <code>python ml/train.py</code> first.</div>
+{% else %}
+
+<div class="card">
+  <p class="muted">Enter a transaction below to see which features most influenced the model's prediction.</p>
+  <p class="section-title mt-2">Transaction Information</p>
+  <div class="form-grid">
+    {% for f in other_features %}
+    <div class="form-group"><label>{{ f }}</label><input type="number" step="any" data-feature="{{ f }}" value="0"></div>
+    {% endfor %}
+  </div>
+  <p class="section-title mt-2">PCA Features</p>
+  <div class="form-grid">
+    {% for f in pca_features %}
+    <div class="form-group"><label>{{ f }}</label><input type="number" step="any" data-feature="{{ f }}" value="0"></div>
+    {% endfor %}
+  </div>
+  <button class="btn mt-2" id="explainBtn">Explain Prediction</button>
+</div>
+
+<div id="explainResult"></div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('explainBtn')?.addEventListener('click', async () => {
+  const inputs = document.querySelectorAll('[data-feature]');
+  const transaction = {};
+  inputs.forEach(inp => { transaction[inp.dataset.feature] = parseFloat(inp.value || '0'); });
+
+  const container = document.getElementById('explainResult');
+  container.innerHTML = '<div class="loading">Computing explanation...</div>';
+  try {
+    const data = await postJSON('/api/predict?explain=true', transaction);
+    let html = `<div class="card"><p class="section-title">Prediction: ${data.prediction} (${(data.fraud_probability*100).toFixed(2)}%)</p>`;
+    if (data.explanation) {
+      html += `<table><tr><th>Feature</th><th>Contribution</th></tr>
+        ${data.explanation.map(e => `<tr><td>${e.feature}</td><td>${e.contribution > 0 ? '+' : ''}${e.contribution}</td></tr>`).join('')}
+        </table>
+        <p class="disclaimer">These explanations describe factors influencing the model's prediction and do not prove that a transaction is fraudulent.</p>`;
+    } else {
+      html += `<p class="muted">Explanation is unavailable for this model or SHAP is not installed. Prediction still works normally.</p>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<div class="card error-state">${e.message}</div>`;
+  }
+});
+</script>
+{% endblock %}

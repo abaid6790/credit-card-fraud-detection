@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Model Performance - FraudGuard{% endblock %}
+{% block page_title %}Model Performance{% endblock %}
+{% block content %}
+
+{% if not ready %}
+<div class="card error-state">Model not trained yet. Run <code>python ml/train.py</code> first.</div>
+{% else %}
+
+<div class="card">
+  <p class="section-title">Active Model</p>
+  <p><strong>{{ metadata.model_name }}</strong> — trained {{ metadata.trained_at }}</p>
+  <p class="muted">Classification threshold: <strong>{{ metadata.threshold }}</strong> (objective: {{ metadata.threshold_objective }})</p>
+  <p class="muted">Imbalance handling: {{ metadata.imbalance_strategy }}</p>
+</div>
+
+<div class="card">
+  <p class="section-title">Test Set Metrics</p>
+  <div class="grid grid-4">
+    <div><span class="stat-label">Precision</span><div class="stat-value" style="font-size:1.3rem;">{{ metadata.metrics.precision }}</div></div>
+    <div><span class="stat-label">Recall</span><div class="stat-value" style="font-size:1.3rem;">{{ metadata.metrics.recall }}</div></div>
+    <div><span class="stat-label">F1</span><div class="stat-value" style="font-size:1.3rem;">{{ metadata.metrics.f1 }}</div></div>
+    <div><span class="stat-label">ROC-AUC</span><div class="stat-value" style="font-size:1.3rem;">{{ metadata.metrics.roc_auc }}</div></div>
+  </div>
+  <div class="grid grid-4 mt-2">
+    <div><span class="stat-label">PR-AUC</span><div class="stat-value" style="font-size:1.3rem;">{{ metadata.metrics.pr_auc }}</div></div>
+    <div><span class="stat-label">Specificity</span><div class="stat-value" style="font-size:1.3rem;">{{ metadata.metrics.specificity }}</div></div>
+    <div><span class="stat-label">False Positive Rate</span><div class="stat-value" style="font-size:1.3rem;">{{ metadata.metrics.false_positive_rate }}</div></div>
+    <div><span class="stat-label">False Negative Rate</span><div class="stat-value" style="font-size:1.3rem;">{{ metadata.metrics.false_negative_rate }}</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <p class="section-title">Confusion Matrix</p>
+  <table>
+    <tr><th></th><th>Predicted Legit</th><th>Predicted Fraud</th></tr>
+    <tr><td><strong>Actual Legit</strong></td><td>{{ metadata.metrics.confusion_matrix.tn }}</td><td>{{ metadata.metrics.confusion_matrix.fp }}</td></tr>
+    <tr><td><strong>Actual Fraud</strong></td><td>{{ metadata.metrics.confusion_matrix.fn }}</td><td>{{ metadata.metrics.confusion_matrix.tp }}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <p class="section-title">Model Comparison</p>
+  <table>
+    <tr><th>Model</th><th>Precision</th><th>Recall</th><th>F1</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
+    {% for name, m in metadata.model_comparison.items() %}
+    <tr {% if name==metadata.model_name %}style="font-weight:700;"{% endif %}>
+      <td>{{ name }}</td><td>{{ m.precision }}</td><td>{{ m.recall }}</td><td>{{ m.f1 }}</td><td>{{ m.roc_auc }}</td><td>{{ m.pr_auc }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% if metadata.feature_importance %}
+<div class="card">
+  <p class="section-title">Top Fraud Indicators (Feature Importance)</p>
+  <div id="featImpChart"></div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if ready and metadata.feature_importance %}
+<script>
+const fi = {{ metadata.feature_importance | tojson }};
+const entries = Object.entries(fi).slice(0, 12).reverse();
+Plotly.newPlot('featImpChart', [{
+  type: 'bar', orientation: 'h',
+  x: entries.map(e => e[1]), y: entries.map(e => e[0]),
+  marker: { color: '#2563EB' }
+}], { margin: {l: 80} }, {responsive: true});
+</script>
+{% endif %}
+{% endblock %}

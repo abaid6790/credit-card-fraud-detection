@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Transaction #{{ tx['id'] }} - FraudGuard{% endblock %}
+{% block page_title %}Transaction #{{ tx['id'] }}{% endblock %}
+{% block content %}
+
+<div class="card result-card {{ 'fraud' if tx['prediction']=='FRAUD' else 'legit' }}">
+  <div class="result-icon">{{ '⚠' if tx['prediction']=='FRAUD' else '✓' }}</div>
+  <div class="result-title">{{ 'POTENTIAL FRAUD DETECTED' if tx['prediction']=='FRAUD' else 'LEGITIMATE TRANSACTION' }}</div>
+  <div class="result-metrics">
+    <div><div class="result-metric-label">Fraud Probability</div><div class="result-metric-value">{{ (tx['fraud_probability']*100) | round(2) }}%</div></div>
+    <div><div class="result-metric-label">Risk Score</div><div class="result-metric-value">{{ tx['risk_score'] }} / 100</div></div>
+    <div><div class="result-metric-label">Risk Level</div><div class="result-metric-value">{{ tx['risk_level'].replace('_',' ').title() }}</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <p class="section-title">Details</p>
+  <table>
+    <tr><td>Timestamp</td><td>{{ tx['timestamp'] }}</td></tr>
+    <tr><td>Amount</td><td>{{ tx['amount'] }}</td></tr>
+    <tr><td>Model Used</td><td>{{ tx['model_name'] }}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <p class="section-title">Feature Values</p>
+  <div style="overflow-x:auto;"><table>
+    <tr>{% for k in features.keys() %}<th>{{ k }}</th>{% endfor %}</tr>
+    <tr>{% for v in features.values() %}<td>{{ v }}</td>{% endfor %}</tr>
+  </table></div>
+</div>
+
+<div class="disclaimer">
+  This is a model-generated risk estimate based on the trained fraud-detection model, not a guaranteed determination of fraud.
+</div>
+{% endblock %}

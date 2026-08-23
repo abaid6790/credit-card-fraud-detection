@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Batch Prediction - FraudGuard{% endblock %}
+{% block page_title %}Batch CSV Prediction{% endblock %}
+{% block content %}
+
+{% if not ready %}
+<div class="card error-state">Model not trained yet. Run <code>python ml/train.py</code> first.</div>
+{% else %}
+
+<div class="card">
+  <p class="section-title">Upload Transaction CSV</p>
+  <p class="muted">CSV must include all model feature columns (Time, V1–V28, Amount).</p>
+  <input type="file" id="csvFile" accept=".csv">
+  <button class="btn mt-2" id="uploadBtn">Run Batch Prediction</button>
+</div>
+
+<div id="batchResult"></div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('uploadBtn')?.addEventListener('click', async () => {
+  const fileInput = document.getElementById('csvFile');
+  const container = document.getElementById('batchResult');
+  if (!fileInput.files.length) {
+    container.innerHTML = '<div class="card error-state">Please choose a CSV file first.</div>';
+    return;
+  }
+  container.innerHTML = '<div class="loading">Running batch predictions...</div>';
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+
+  try {
+    const res = await fetch('/api/predict/batch', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Batch prediction failed.');
+
+    const s = data.summary;
+    let html = `
+      <div class="grid grid-4">
+        <div class="card stat-card"><span class="stat-label">Total Transactions</span><span class="stat-value">${s.total_transactions.toLocaleString()}</span></div>
+        <div class="card stat-card"><span class="stat-label">Potential Fraud</span><span class="stat-value danger">${s.potential_fraud}</span></div>
+        <div class="card stat-card"><span class="stat-label">Fraud Rate</span><span class="stat-value">${s.fraud_rate}%</span></div>
+        <div class="card stat-card"><span class="stat-label">Average Risk Score</span><span class="stat-value">${s.average_risk_score}</span></div>
+      </div>
+      <div class="card mt-2">
+        <p class="section-title">Preview (first 50 rows)</p>
+        <div style="overflow-x:auto;"><table>
+          <tr><th>Prediction</th><th>Probability</th><th>Risk Score</th><th>Risk Level</th><th>Amount</th></tr>
+          ${data.preview.map(r => `<tr>
+            <td>${r.prediction}</td><td>${(r.fraud_probability*100).toFixed(2)}%</td>
+            <td>${r.risk_score}</td><td><span class="badge ${riskBadgeClass(r.risk_level)}">${riskLabel(r.risk_level)}</span></td>
+            <td>${r.Amount !== undefined ? r.Amount : ''}</td>
+          </tr>`).join('')}
+        </table></div>
+        <a class="btn mt-2" href="/api/batch/download/${s.download_token}">Download Full Results CSV</a>
+      </div>`;
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<div class="card error-state">${e.message}</div>`;
+  }
+});
+</script>
+{% endblock %}

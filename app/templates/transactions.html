@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Transaction History - FraudGuard{% endblock %}
+{% block page_title %}Transaction History{% endblock %}
+{% block content %}
+
+<div class="filter-tabs">
+  <a class="filter-tab {{ 'active' if filter_type=='all' }}" href="{{ url_for('transactions.transactions_page', filter='all') }}">All</a>
+  <a class="filter-tab {{ 'active' if filter_type=='legitimate' }}" href="{{ url_for('transactions.transactions_page', filter='legitimate') }}">Legitimate</a>
+  <a class="filter-tab {{ 'active' if filter_type=='fraud' }}" href="{{ url_for('transactions.transactions_page', filter='fraud') }}">Fraud</a>
+  <a class="filter-tab {{ 'active' if filter_type=='high' }}" href="{{ url_for('transactions.transactions_page', filter='high') }}">High Risk</a>
+  <a class="filter-tab {{ 'active' if filter_type=='critical' }}" href="{{ url_for('transactions.transactions_page', filter='critical') }}">Critical</a>
+</div>
+
+<div class="card">
+  {% if rows %}
+  <table>
+    <tr><th>ID</th><th>Timestamp</th><th>Amount</th><th>Prediction</th><th>Probability</th><th>Risk Score</th><th>Risk Level</th></tr>
+    {% for r in rows %}
+    <tr onclick="window.location='{{ url_for('transactions.transaction_detail', tx_id=r['id']) }}'" style="cursor:pointer;">
+      <td>{{ r['id'] }}</td>
+      <td>{{ r['timestamp'][:19] }}</td>
+      <td>{{ r['amount'] }}</td>
+      <td>{{ r['prediction'] }}</td>
+      <td>{{ (r['fraud_probability']*100) | round(2) }}%</td>
+      <td>{{ r['risk_score'] }}</td>
+      <td><span class="badge badge-{{ r['risk_level'].lower().replace('_','-') }}">{{ r['risk_level'].replace('_',' ').title() }}</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+  <div class="pagination">
+    {% if page > 1 %}<a class="btn btn-secondary" href="{{ url_for('transactions.transactions_page', filter=filter_type, page=page-1) }}">Previous</a>{% endif %}
+    <span class="muted">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}<a class="btn btn-secondary" href="{{ url_for('transactions.transactions_page', filter=filter_type, page=page+1) }}">Next</a>{% endif %}
+  </div>
+  {% else %}
+  <div class="empty-state">No transactions logged yet. Run a prediction from the Analyzer or Batch page.</div>
+  {% endif %}
+</div>
+{% endblock %}

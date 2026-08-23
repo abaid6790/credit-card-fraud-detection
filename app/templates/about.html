@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}About - FraudGuard{% endblock %}
+{% block page_title %}About This System{% endblock %}
+{% block content %}
+
+<div class="card">
+  <p class="section-title">What this is</p>
+  <p>FraudGuard is a <strong>machine-learning-based fraud-risk detection system</strong>, built on the
+     Kaggle "Credit Card Fraud Detection" dataset (anonymized European card transactions, 2013).
+     It classifies transactions as legitimate or potentially fraudulent and produces a 0–100 risk score
+     derived directly from the trained model's fraud probability.</p>
+</div>
+
+<div class="card">
+  <p class="section-title">What this is not</p>
+  <p>This is <strong>not</strong> a guaranteed fraud-detection system and is not certified for
+     production banking use. A flagged transaction is not proof of fraud, and an unflagged
+     transaction is not a guarantee of legitimacy.</p>
+</div>
+
+<div class="card">
+  <p class="section-title">Limitations</p>
+  <ul>
+    <li>The dataset covers only two days of transactions from one processor in 2013.</li>
+    <li>Features V1–V28 are anonymized PCA components with no interpretable real-world meaning.</li>
+    <li>There is no merchant, device, geolocation, or customer-history data.</li>
+    <li>A production system would additionally need real-time streams, transaction velocity
+        features, device fingerprinting, continuous retraining, drift monitoring, and human review.</li>
+  </ul>
+</div>
+
+{% if metadata %}
+<div class="card">
+  <p class="section-title">Current Model</p>
+  <p>{{ metadata.model_name }} — trained {{ metadata.trained_at }}, threshold {{ metadata.threshold }}</p>
+</div>
+{% endif %}
+{% endblock %}

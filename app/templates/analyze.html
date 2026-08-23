@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Analyze Transaction - FraudGuard{% endblock %}
+{% block page_title %}Transaction Analyzer{% endblock %}
+{% block content %}
+
+{% if not ready %}
+<div class="card error-state">Model not trained yet. Run <code>python ml/train.py</code> first.</div>
+{% else %}
+
+<div class="card">
+  <p class="section-title">What are V1–V28?</p>
+  <p class="muted">
+    V1–V28 are anonymized PCA (Principal Component Analysis) features. The original
+    transaction details (merchant, location, card type, etc.) were mathematically
+    transformed into these 28 numbers to protect customer privacy — so there's no
+    real-world label like "merchant category" to read off them, and no "correct"
+    value to guess. Most values fall roughly between <strong>-3 and +3</strong>;
+    values far outside that range (e.g. -10, +8) tend to look more unusual to the model.
+  </p>
+  <p class="muted">
+    <strong>Time</strong> is seconds elapsed since the first transaction in the dataset
+    (0 to ~172,792). <strong>Amount</strong> is the transaction amount in the dataset's currency units.
+  </p>
+</div>
+
+<div class="card">
+  <p class="section-title">How to test this</p>
+  <p class="muted">
+    Since V1–V28 have no intuitive values to type from scratch, the easiest way to test
+    is to load a real transaction from your dataset and see what the model predicts —
+    then optionally tweak a few numbers to see how the prediction changes.
+  </p>
+  <button class="btn" id="loadLegitBtn">Load Real Legitimate Example</button>
+  <button class="btn btn-secondary" id="loadFraudBtn">Load Real Fraud Example</button>
+  <p class="muted mt-2">
+    You can also open your <code>data/creditcard.csv</code> in Excel/Sheets, copy any row's
+    values, and paste them in one at a time — rows where <code>Class = 1</code> are known fraud,
+    <code>Class = 0</code> are known legitimate.
+  </p>
+</div>
+
+<div class="card">
+  <p class="section-title">Transaction Information</p>
+  <p class="muted" style="margin-top:-6px;">Basic transaction details — not anonymized.</p>
+  <div class="form-grid">
+    {% for f in other_features %}
+    <div class="form-group">
+      <label>{{ f }}{% if f == 'Time' %} (seconds since first transaction){% elif f == 'Amount' %} (currency units){% endif %}</label>
+      <input type="number" step="any" id="feat_{{ f }}" data-feature="{{ f }}" placeholder="e.g. 0.00">
+    </div>
+    {% endfor %}
+  </div>
+
+  <p class="section-title mt-2">PCA Features (V1–V28)</p>
+  <p class="muted" style="margin-top:-6px;">
+    Anonymized numeric features — typical range is about -3 to +3. No real-world meaning;
+    use the example buttons above rather than guessing values.
+  </p>
+  <div class="form-grid">
+    {% for f in pca_features %}
+    <div class="form-group">
+      <label>{{ f }}</label>
+      <input type="number" step="any" id="feat_{{ f }}" data-feature="{{ f }}" placeholder="0.00" value="0">
+    </div>
+    {% endfor %}
+  </div>
+
+  <button class="btn mt-2" id="analyzeBtn">Analyze Transaction</button>
+  <label style="margin-left:16px; font-size:0.85rem;">
+    <input type="checkbox" id="includeExplain"> Include explanation (SHAP)
+  </label>
+</div>
+
+<div id="resultContainer"></div>
+
+<div class="disclaimer">
+  This is a model-generated risk estimate, not a guaranteed determination of fraud.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const allInputs = document.querySelectorAll('[data-feature]');
+
+// Real sample rows pulled from the training dataset, so testing uses
+// actual transactions instead of guessed values.
+const LEGIT_EXAMPLE = {
+  Time: 2, V1: -0.426, V2: 0.9605, V3: 1.1411, V4: -0.1683, V5: 0.421,
+  V6: -0.0297, V7: 0.4762, V8: 0.2603, V9: -0.5687, V10: -0.3714,
+  V11: 1.3413, V12: 0.3599, V13: -0.3581, V14: -0.1371, V15: 0.5176,
+  V16: 0.4017, V17: -0.0581, V18: 0.0687, V19: -0.0332, V20: 0.085,
+  V21: -0.2083, V22: -0.5598, V23: -0.0264, V24: -0.3714, V25: -0.2328,
+  V26: 0.1059, V27: 0.2538, V28: 0.0811, Amount: 3.67
+};
+
+const FRAUD_EXAMPLE = {
+  Time: 6986, V1: -4.398, V2: 1.3584, V3: -2.5928, V4: 2.6798, V5: -1.1281,
+  V6: -1.7065, V7: -3.4962, V8: -0.2488, V9: -0.2478, V10: -4.8016,
+  V11: 4.8958, V12: -10.9128, V13: 0.1844, V14: -6.7711, V15: -0.0073,
+  V16: -7.3581, V17: -12.5984, V18: -5.1315, V19: 0.3083, V20: -0.1716,
+  V21: 0.5736, V22: 0.177, V23: -0.4362, V24: -0.0535, V25: 0.2524,
+  V26: -0.6575, V27: -0.8271, V28: 0.8496, Amount: 59.0
+};
+
+function fillForm(example) {
+  allInputs.forEach(inp => {
+    const key = inp.dataset.feature;
+    if (key in example) inp.value = example[key];
+  });
+}
+
+document.getElementById('loadLegitBtn')?.addEventListener('click', () => fillForm(LEGIT_EXAMPLE));
+document.getElementById('loadFraudBtn')?.addEventListener('click', () => fillForm(FRAUD_EXAMPLE));
+
+document.getElementById('analyzeBtn')?.addEventListener('click', async () => {
+  const transaction = {};
+  allInputs.forEach(inp => { transaction[inp.dataset.feature] = parseFloat(inp.value || '0'); });
+
+  const container = document.getElementById('resultContainer');
+  container.innerHTML = '<div class="loading">Analyzing transaction...</div>';
+
+  const explain = document.getElementById('includeExplain').checked;
+  try {
+    const data = await postJSON(`/api/predict?explain=${explain}`, transaction);
+    const isFraud = data.prediction === 'FRAUD';
+    let html = `
+      <div class="card result-card ${isFraud ? 'fraud' : 'legit'}">
+        <div class="result-icon">${isFraud ? '⚠' : '✓'}</div>
+        <div class="result-title">${isFraud ? 'POTENTIAL FRAUD DETECTED' : 'LEGITIMATE TRANSACTION'}</div>
+        <div class="result-metrics">
+          <div><div class="result-metric-label">Fraud Probability</div><div class="result-metric-value">${(data.fraud_probability*100).toFixed(2)}%</div></div>
+          <div><div class="result-metric-label">Risk Score</div><div class="result-metric-value">${data.risk_score} / 100</div></div>
+          <div><div class="result-metric-label">Risk Level</div><div class="result-metric-value">${riskLabel(data.risk_level)}</div></div>
+        </div>
+      </div>`;
+
+    if (data.explanation) {
+      html += `<div class="card"><p class="section-title">Why did the model consider this transaction risky?</p><table>
+        <tr><th>Feature</th><th>Contribution</th></tr>
+        ${data.explanation.map(e => `<tr><td>${e.feature}</td><td>${e.contribution > 0 ? '+' : ''}${e.contribution}</td></tr>`).join('')}
+        </table>
+        <p class="disclaimer">These explanations describe factors influencing the model's prediction and do not prove that a transaction is fraudulent.</p>
+        </div>`;
+    }
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<div class="card error-state">${e.message}</div>`;
+  }
+});
+</script>
+{% endblock %}

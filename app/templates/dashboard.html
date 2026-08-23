@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - FraudGuard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+{% if not ready %}
+<div class="card error-state">
+  <p><strong>Model not trained yet.</strong></p>
+  <p class="muted">Place <code>data/creditcard.csv</code> in the project, then run
+     <code>python ml/train.py</code>. Reload this page once training completes.</p>
+  {% if error %}<p class="muted">Detail: {{ error }}</p>{% endif %}
+</div>
+{% else %}
+
+<div class="grid grid-4">
+  <div class="card stat-card">
+    <span class="stat-label">Total Transactions (dataset)</span>
+    <span class="stat-value">{{ "{:,}".format(summary.dataset.total_transactions or 0) }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Fraud Detected (dataset)</span>
+    <span class="stat-value danger">{{ "{:,}".format(summary.dataset.fraud_transactions or 0) }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Fraud Rate (dataset)</span>
+    <span class="stat-value">{{ summary.dataset.fraud_percentage }}%</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Model Recall (test set)</span>
+    <span class="stat-value accent">{{ (summary.model_metrics.recall * 100) | round(2) if summary.model_metrics else '—' }}%</span>
+  </div>
+</div>
+
+<div class="grid grid-4 mt-2">
+  <div class="card stat-card">
+    <span class="stat-label">Live Predictions Logged</span>
+    <span class="stat-value">{{ summary.prediction_history.total_predictions }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Flagged as Fraud</span>
+    <span class="stat-value danger">{{ summary.prediction_history.fraud_predictions }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Average Risk Score</span>
+    <span class="stat-value">{{ summary.prediction_history.average_risk_score }}</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Active Model</span>
+    <span class="stat-value accent" style="font-size:1.2rem;">{{ summary.model_name }}</span>
+  </div>
+</div>
+
+<div class="card mt-2">
+  <p class="section-title">Model Performance (test set)</p>
+  <div class="grid grid-4">
+    <div><span class="stat-label">Precision</span><div class="stat-value" style="font-size:1.3rem;">{{ summary.model_metrics.precision }}</div></div>
+    <div><span class="stat-label">Recall</span><div class="stat-value" style="font-size:1.3rem;">{{ summary.model_metrics.recall }}</div></div>
+    <div><span class="stat-label">F1 Score</span><div class="stat-value" style="font-size:1.3rem;">{{ summary.model_metrics.f1 }}</div></div>
+    <div><span class="stat-label">ROC-AUC</span><div class="stat-value" style="font-size:1.3rem;">{{ summary.model_metrics.roc_auc }}</div></div>
+  </div>
+</div>
+
+<div class="disclaimer">
+  This dashboard reflects a machine-learning-based fraud-risk estimate trained on a historical,
+  anonymized dataset. It is not a guaranteed determination of fraud. See <a href="{{ url_for('main.about_page') }}">About</a> for limitations.
+</div>
+
+{% endif %}
+{% endblock %}

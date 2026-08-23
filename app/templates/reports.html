@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Reports - FraudGuard{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block content %}
+
+{% if not ready %}
+<div class="card error-state">Model not trained yet. Run <code>python ml/train.py</code> first.</div>
+{% else %}
+<div class="card">
+  <p class="section-title">Generate Report</p>
+  <p class="muted">Includes prediction summary, model metrics, and threshold information.</p>
+  <button class="btn" onclick="downloadReport('csv')">Download CSV Report</button>
+  <button class="btn btn-secondary" onclick="downloadReport('pdf')">Download PDF Report</button>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function downloadReport(fmt) {
+  const res = await fetch(`/api/reports/${fmt}`, { method: 'POST' });
+  if (!res.ok) { alert('Failed to generate report.'); return; }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `fraud_report.${fmt}`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

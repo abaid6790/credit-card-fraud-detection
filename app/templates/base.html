@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Fraud Risk Detection{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">&#9873;</span>
+      <span class="brand-text">FraudGuard</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('main.dashboard') }}" class="nav-item {{ 'active' if request.endpoint=='main.dashboard' }}">Dashboard</a>
+      <a href="{{ url_for('main.analyze') }}" class="nav-item {{ 'active' if request.endpoint=='main.analyze' }}">Analyze Transaction</a>
+      <a href="{{ url_for('main.batch') }}" class="nav-item {{ 'active' if request.endpoint=='main.batch' }}">Batch Prediction</a>
+      <a href="{{ url_for('transactions.transactions_page') }}" class="nav-item {{ 'active' if request.endpoint=='transactions.transactions_page' }}">Transaction History</a>
+      <a href="{{ url_for('monitoring.monitoring_page') }}" class="nav-item {{ 'active' if request.endpoint=='monitoring.monitoring_page' }}">Monitoring</a>
+      <a href="{{ url_for('main.analytics_page') }}" class="nav-item {{ 'active' if request.endpoint=='main.analytics_page' }}">Analytics</a>
+      <a href="{{ url_for('main.model_page') }}" class="nav-item {{ 'active' if request.endpoint=='main.model_page' }}">Model Performance</a>
+      <a href="{{ url_for('main.explain_page') }}" class="nav-item {{ 'active' if request.endpoint=='main.explain_page' }}">Explainable AI</a>
+      <a href="{{ url_for('main.reports_page') }}" class="nav-item {{ 'active' if request.endpoint=='main.reports_page' }}">Reports</a>
+      <a href="{{ url_for('main.settings_page') }}" class="nav-item {{ 'active' if request.endpoint=='main.settings_page' }}">Settings</a>
+      <a href="{{ url_for('main.about_page') }}" class="nav-item {{ 'active' if request.endpoint=='main.about_page' }}">About</a>
+    </nav>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+      <button id="themeToggle" class="theme-toggle" title="Toggle dark/light theme">&#9788;</button>
+    </header>
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
